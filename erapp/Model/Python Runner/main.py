@@ -8,6 +8,10 @@ from flask import Flask, request, jsonify
 import os
 from werkzeug.utils import secure_filename
 from flask_cors import CORS
+from werkzeug.security import generate_password_hash, check_password_hash
+
+# Initialize a simple in-memory users database
+users = {}
 
 # Get the absolute path to the current script directory
 script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -37,6 +41,65 @@ if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+@app.route('/signup', methods=['POST', 'OPTIONS'])
+def signup():
+    if request.method == 'OPTIONS':
+        response = jsonify({'status': 'ok'})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
+        response.headers.add('Access-Control-Allow-Methods', 'POST')
+        return response
+
+    data = request.get_json()
+    email = data.get('email')
+    password = data.get('password')
+    name = data.get('name')
+
+    if not email or not password or not name:
+        return jsonify({'error': 'Missing required fields'}), 400
+
+    if email in users:
+        return jsonify({'error': 'Email already registered'}), 400
+
+    # Store user with hashed password
+    users[email] = {
+        'name': name,
+        'password': generate_password_hash(password)
+    }
+
+    return jsonify({
+        'message': 'User registered successfully',
+        'user': {'email': email, 'name': name}
+    }), 201
+
+@app.route('/login', methods=['POST', 'OPTIONS'])
+def login():
+    if request.method == 'OPTIONS':
+        response = jsonify({'status': 'ok'})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
+        response.headers.add('Access-Control-Allow-Methods', 'POST')
+        return response
+
+    data = request.get_json()
+    email = data.get('email')
+    password = data.get('password')
+
+    if not email or not password:
+        return jsonify({'error': 'Missing email or password'}), 400
+
+    if email not in users:
+        return jsonify({'error': 'User not found'}), 404
+
+    user = users[email]
+    if not check_password_hash(user['password'], password):
+        return jsonify({'error': 'Invalid password'}), 401
+
+    return jsonify({
+        'message': 'Login successful',
+        'user': {'email': email, 'name': user['name']}
+    }), 200
 
 @app.route('/detect_emotion', methods=['POST', 'OPTIONS'])
 def detect_emotion():
