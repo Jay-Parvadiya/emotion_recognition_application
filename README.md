@@ -27,3 +27,5 @@ python main.py
 After run flutter frontend
 flutter pub get
 flutter run
+
+This application don't diractly work on mobile becsue of some module is use for website.
